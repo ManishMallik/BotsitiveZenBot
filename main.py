@@ -5,30 +5,28 @@ import os
 import requests
 import json
 from discord.ext import commands
-
-#https://coderedirect.com/questions/635075/how-can-i-get-user-input-in-a-python-discord-bot
-#https://newbedev.com/how-can-i-get-user-input-in-a-python-discord-bot
-#https://www.codegrepper.com/code-examples/python/discord.py+get+user+input
-#https://docs.replit.com/programming-ide/storing-sensitive-information-environment-variables
-
-#to fix the HTTP 429 error: https://replit.com/talk/ask/Discord-Bot-How-to-fix-429-rate-limit-error/121289
+import nacl
 
 client = commands.Bot(command_prefix = "-");
 
-#List of commands and their descriptions, does not show hidden commands
-commandsList = ['-tq: Provides today\'s quote of the day\n', '-rq: Provides a random quote from well known people\n', '-cq: Provides a random, customized quote that the creators made or found\n', '-aq: Adds a custom quote and the author\n', '-ping: Bot will say \"Pong!\"\n', '-hello: Bot will say \"Hello!\"\n', '-bye: Bot will say \"Goodbye!\"']
+#List of text commands and their descriptions, does not show hidden commands
+commandsList = ['-tq: Provides today\'s quote of the day\n', '-rq: Provides a random quote from well known people\n', '-cq: Provides a random, customized quote that the creators made or found\n', '-aq: Adds a custom quote and the author\n', '-ping: Bot will say \"Pong!\"\n', '-hello: Bot will say \"Hello!\"\n', '-bye: Bot will say \"Goodbye!\"\n', '-balance: Bot will describe about good and evil in people and show Zenyatta holding light and dark orbs.']
 
+vCommands = ['-join: Commands the bot to join the voice channel. Make sure you are in a voice channel for this to work.\n', '-leave: Commands the bot to leave the voice channel.\n', '-zenyatta: You will hear Zenyatta\'s voice.\n', '-courage: Gives you courage to do it.']
 #Bad words
 badWords = ['fuck', 'shit', 'penis', 'dick', 'pussy', 'bitch', 'ass', 'wanker', 'damn', 'piss', 'prick', 'cunt']
 
 #Responses to messages containing bad words
-languages = ['Mind your language', 'LANGUAGE!!!', 'Take a chill pill', 'Oh someone is having a \"good\" day', 'Take some deep breaths before saying anything more']
+languages = ['Mind your language', 'LANGUAGE!!!', 'Take a chill pill', 'Oh someone is having a \"good\" day', 'Take some deep breaths before saying anything more', 'https://tenor.com/view/chill-out-kevin-hart-jumanji-jumanji-movie-gif-11210111']
 
-#My friends
-people = ['+manish mallik', '+sandeep mishra', '+rohan springer', '+reshvar kuppurangi', '+rohit parkar', '+priyansh mewada', '+hrishi rout']
-
-#The descriptions of my friends
-personal = ['The starter and co-creator of Botsitive Zen. He is also a cross country runner and is jacked. :man_running: :muscle:', '6\' 3\" :basketball:', ':man_running: :basketball:', 'Experience tranquility', 'He can be easily memed. Other than that, he is handsome and probably the cutest friend ever.', 'Genius mind and co-creator of Botsitive Zen', 'Elite chess player :trophy: :chess_pawn: . You can\'t beat him, he is like Sherlock Holmes']
+descriptions = {
+  #My friends
+  'people': ['-manish mallik', '-sandeep mishra', '-rohan springer', '-reshvar kuppurangi', '-rohit parkar', '-priyansh mewada', '-hrishi rout', '-krishna rout'],
+  #Descriptions about my friends
+  'facts': ['The starter and co-creator of Botsitive Zen. He is also a cross country runner and is jacked. :man_running: :muscle:', '6\' 3\", The Indian Kevin Durant :basketball:. He looks like a snack; any girl would want him. He can trash talk and beat up anyone, do not mess with him or he will throw hands :muscle:', ':man_running: :basketball:', 'Experience tranquility', 'He can be easily memed. Other than that, he is handsome and probably the cutest friend ever.', 'Genius mind and co-creator of Botsitive Zen', 'Elite chess player :trophy: :chess_pawn: . You can\'t beat him, he is like Sherlock Holmes', 'Got the beard, got the mustache, and got the hair. DO NOT SHAVE THEM!!!'],
+  #Images/GIFs
+  'images': ["https://tenor.com/view/boom-dude-ryan-reynolds-free-guy-pow-gif-22851757", "https://tenor.com/view/short-fight-tall-gif-21229601", "https://tenor.com/view/mom-sexy-mom-hot-momma-gif-12128762", "https://tenor.com/view/overwatch-overwatch-league-gladiators-gladiator-la-gladiators-gif-13503131", "https://tenor.com/view/josuke-pose-jjba-jojo-josuke-pose-gif-7693551", "https://tenor.com/view/troll-stick-figure-dancing-gif-5259835", "https://tenor.com/view/thanos-thanos-dance-party-vibes-gif-14138984", "https://tenor.com/view/beard-man-with-beard-men-with-beard-mustache-goatee-gif-5598626"]
+}
 
 #Will contain a list of quotes from customQuotes.txt
 ownQuotes = []
@@ -56,15 +54,29 @@ def language():
 def personality(message):
   indexNum = -1
   found = False
-  for x in people:
+  for x in descriptions['people']:
     indexNum += 1
     if x == message:
       found = True
       break
   if found:
-    return personal[indexNum]
+    return descriptions['facts'][indexNum]
   else:
-    return "No personality for this person" 
+    return "No personality for this person"
+
+#Returns a GIF or image that depicts a certain person
+def depiction(message):
+  indexNum = -1
+  found = False
+  for x in descriptions['people']:
+    indexNum += 1
+    if x == message:
+      found = True
+      break
+  if found:
+    return descriptions['images'][indexNum]
+  else:
+    return "" 
 
 #returns a quote and author pulled from ZenQuotes API
 def getQuotes(message):
@@ -83,8 +95,11 @@ def getQuotes(message):
 #Bot will send a list of the commands and their descriptions when someone asks for the commands
 @client.command()
 async def commands(ctx):
-  message = ''
+  message = 'Text Commands:\n'
   for x in commandsList:
+    message += x
+  message += '\n\nVoice Commands:\n'
+  for x in vCommands:
     message += x
   await ctx.send(message)
 
@@ -98,7 +113,7 @@ async def tq(ctx):
 @client.command()
 async def rq(ctx):
   quote = getQuotes('random')
-  await ctx.send(quote)   
+  await ctx.send(quote)
 
 #Bot will respond to -ping with Pong!
 @client.command()
@@ -166,6 +181,77 @@ async def aq(ctx):
         saveCustomQuotes()
         await ctx.send('We added your quote and credentials, thank you so much!')
 
+#Sends a message along with the yin-yang emoji and a Zenyatta, a character from Overwatch
+@client.command()
+async def balance(ctx):
+  await ctx.send('Not everyone is either entirely good or evil. In good, there is some evil, and in evil, there is some good.')
+  await ctx.send(':yin_yang:')
+  await ctx.send('https://tenor.com/view/zenyatta-robot-power-gif-7313314')
+
+async def join(ctx):
+  vc = ctx.author.voice.channel
+  print(vc)
+  voice = discord.utils.get(client.voice_clients, guild = ctx.guild)
+  if(voice == None):
+    await vc.connect()
+
+#Voice command. It has the Zenyatta saying 'Experience tranquility'
+@client.command()
+async def zenyatta(ctx):
+  #join(ctx)
+  vc = ctx.author.voice.channel
+  print(vc)
+  voice = discord.utils.get(client.voice_clients, guild = ctx.guild)
+  if(voice == None):
+    await vc.connect()
+  guild = ctx.guild
+  voice_client: discord.VoiceClient = discord.utils.get(client.voice_clients, guild=guild)
+  audio_source = discord.FFmpegPCMAudio('experienceTranquility.mp3')
+  #if not voice_client.is_playing():
+   # voice_client.play(audio_source, after = None)
+  print('Time to play')
+  await voice_client.play(audio_source).start()
+  print('Time to leave')
+  await ctx.voice_client.disconnect(force = True)
+  print('Time to left')
+  #player.start()
+  #while not player.is_done():
+   # await asyncio.sleep(1)
+  #player.stop()
+
+@client.command()
+async def courage(ctx):
+  vc = ctx.author.voice.channel
+  print(vc)
+  voice = discord.utils.get(client.voice_clients, guild = ctx.guild)
+  if(voice == None):
+    await vc.connect()
+  guild = ctx.guild
+  voice_client: discord.VoiceClient = discord.utils.get(client.voice_clients, guild=guild)
+  audio_source = discord.FFmpegPCMAudio('doIt.mp3')
+  #if not voice_client.is_playing():
+   # voice_client.play(audio_source, after = None)
+  voice_client.play(audio_source, after = None).start()
+
+@client.command()
+async def zuko(ctx):
+  vc = ctx.author.voice.channel
+  print(vc)
+  voice = discord.utils.get(client.voice_clients, guild = ctx.guild)
+  if(voice == None):
+    await vc.connect()
+  guild = ctx.guild
+  voice_client: discord.VoiceClient = discord.utils.get(client.voice_clients, guild=guild)
+  audio_source = discord.FFmpegPCMAudio('zuko.mp3')
+  #if not voice_client.is_playing():
+   # voice_client.play(audio_source, after = None)
+  voice_client.play(audio_source, after = None).start()
+  ctx.voice_client.disconnect()
+
+@client.command()
+async def leave(ctx):
+  await ctx.voice_client.disconnect()
+  
 @client.event
 async def on_ready():
   readCustomQuotes()
@@ -188,17 +274,31 @@ async def on_message(message):
   #Bot will respond to bad words by telling users to be careful what they say
   if any(word in content.lower() for word in badWords):
     msg = language()
-    await message.channel.send(msg)
-  #Bot will respond to commands with +firstName lastName by providing descriptions of them if they exist in an array of people. This feature is hidden and currently contains my friends
-  if any(word == content.lower() for word in people):
-    msg = personality(content.lower())
-    await message.channel.send(msg)
-    if content.lower() == '+hrishi rout':
-      await message.channel.send('https://tenor.com/view/thanos-thanos-dance-party-vibes-gif-14138984')
+    if('ass' in content.lower()):
+      if not('mass' in content.lower() or 'bass' in content.lower()):
+        #Unicode for the emojis that spell out the word "bruh." Last emoji is the unicode of a person facepalming.
+        bruh = ['\U0001F1E7', '\U0001F1F7', '\U0001F1FA', '\U0001F1ED', '\U0001F926']
+        for x in bruh:
+          await message.add_reaction(x)
+        await message.channel.send(msg)
+    else:
+      bruh = ['\U0001F1E7', '\U0001F1F7', '\U0001F1FA', '\U0001F1ED', '\U0001F926']
+      for x in bruh:
+        await message.add_reaction(x)
+      await message.channel.send(msg)
+  if 'manish and rohan' in content.lower() or 'rohan and manish' in content.lower():
+    await message.channel.send('The real dynamic duo, not Rohit and Avirat')
   if 'sus' == content.lower() or content.lower().startswith('sus ') or ' sus ' in content.lower() or content.lower().endswith(' sus'):
     await message.channel.send('https://tenor.com/view/caught-in-4k-caught-in4k-chungus-gif-19840038')
   #process the message to see if it contains the prefix command
-  await client.process_commands(message)
+  if any(word == content.lower() for word in descriptions['people']):
+    msg = personality(content.lower())
+    await message.channel.send(msg)
+    image = depiction(content.lower())
+    if image != "":  
+      await message.channel.send(image)
+  else:
+    await client.process_commands(message)
 
 my_secret = os.environ['TOKEN']
 client.run(my_secret)
