@@ -6,19 +6,44 @@ import requests
 import json
 from discord.ext import commands
 import nacl
+import re
+import nltk
+from nltk.corpus import stopwords
+import pandas as pd
+from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
+
+analyzer = SentimentIntensityAnalyzer()
+nltk.download('stopwords')
+
+stop_Words = stopwords.words('english')
+stop_Words.pop(0)
 
 client = commands.Bot(command_prefix = "-");
 
 #List of text commands and their descriptions, does not show hidden commands
-commandsList = ['-tq: Provides today\'s quote of the day\n', '-rq: Provides a random quote from well known people\n', '-cq: Provides a random, customized quote that the creators made or found\n', '-aq: Adds a custom quote and the author\n', '-ping: Bot will say \"Pong!\"\n', '-hello: Bot will say \"Hello!\"\n', '-bye: Bot will say \"Goodbye!\"\n', '-balance: Bot will describe about good and evil in people and show Zenyatta holding light and dark orbs.']
+commandsList = [
+'-tq: Provides today\'s quote of the day\n', 
+'-rq: Provides a random quote from well known people\n', '-cq: Provides a random, customized quote that the creators made or found\n', 
+'-aq: Adds a custom quote and the author\n', 
+'-ping: Bot will say \"Pong!\"\n', 
+'-hello: Bot will say \"Hello!\"\n', '-bye: Bot will say \"Goodbye!\"\n', 
+'-balance: Bot will describe about good and evil in people and show Zenyatta holding light and dark orbs.\n',
+'-urban \"type\" \"term\": The types are either \"name\" or \"word\". If the word you will provide is a name type, the bot will try to give the best possible description of that person using sentiment analysis. If the word given is an actual word, then the bot will try to find the most specific definition of that word.'
+]
 
-vCommands = ['-join: Commands the bot to join the voice channel. Make sure you are in a voice channel for this to work.\n', '-leave: Commands the bot to leave the voice channel.\n', '-zenyatta: You will hear Zenyatta\'s voice.\n', '-courage: Gives you courage to do it.']
+vCommands = [ 
+'-zenyatta: You will hear Zenyatta\'s voice.\n', 
+'-courage: Gives you courage to do it.', 
+'-zuko: Hear Zuko\'s best moment', 
+'-leave: Commands the bot to leave the voice channel.\n'
+]
 #Bad words
 badWords = ['fuck', 'shit', 'penis', 'dick', 'pussy', 'bitch', 'ass', 'wanker', 'damn', 'piss', 'prick', 'cunt']
 
 #Responses to messages containing bad words
 languages = ['Mind your language', 'LANGUAGE!!!', 'Take a chill pill', 'Oh someone is having a \"good\" day', 'Take some deep breaths before saying anything more', 'https://tenor.com/view/chill-out-kevin-hart-jumanji-jumanji-movie-gif-11210111']
 
+#Dictionary of descriptions
 descriptions = {
   #My friends
   'people': ['-manish mallik', '-sandeep mishra', '-rohan springer', '-reshvar kuppurangi', '-rohit parkar', '-priyansh mewada', '-hrishi rout', '-krishna rout'],
@@ -92,6 +117,17 @@ def getQuotes(message):
   quote = data[0]['q'] + '\n-' + data[0]['a']
   return quote
 
+#This method will use sentiment analysis to analyze a description and calculate its score
+def vader_uncleaned_score(msg):
+  sentiment_score = 0
+  count = 0
+  text = msg
+  for i in text:
+    i = i.strip().replace('\n',' ')
+    sentiment_score += analyzer.polarity_scores(i)['compound']
+    count+=1
+  return(sentiment_score/count)
+
 #Bot will send a list of the commands and their descriptions when someone asks for the commands
 @client.command()
 async def commands(ctx):
@@ -129,6 +165,47 @@ async def hello(ctx):
 @client.command()
 async def bye(ctx):
   await ctx.send('Goodbye!')
+
+#Bot will use the Urban Dictionary API to pull a list of all the possible definitions/descriptions for a word
+@client.command()
+async def urban(ctx, term, msg):
+  #Setup to request for a list of descriptions
+  url = "https://mashape-community-urban-dictionary.p.rapidapi.com/define"
+  querystring = {"term":msg}
+  myKey = os.environ['My Urban Key']
+  headers = {
+    'x-rapidapi-host': "mashape-community-urban-dictionary.p.rapidapi.com",
+    'x-rapidapi-key': myKey
+  }
+  
+  #Get the list of definitions for the word being searched for
+  response = requests.request("GET", url, headers=headers, params=querystring)
+  data = json.loads(response.text)
+  #1st definition of the word in that list
+  definition = data['list'][0]['definition']
+  
+  #Two types of words: a regular word, or a name
+  #The type of the word/term being searched for in the urban dictionary must be specified
+  #If the word is supposed to be a name, then get the best urban dictionary description possible for the name
+  if term == 'name':
+    #Initial score for the 1st definition
+    highestScore = vader_uncleaned_score(definition)
+    for x in data['list']:
+      #Get the sentiment analysis score of the next definition in the list
+      newScore = vader_uncleaned_score(x['definition'])
+      #If newScore is greater than the highest sentiment analysis score seen so far, replace the chosen definition with the new one before going to the next definition
+      #Make newScore the new highestScore
+      if highestScore < newScore:
+        definition = x['definition']
+        highestScore = newScore
+  #The word type should just be a regular word if not a name. Get the longest definition possible
+  elif term == 'word':
+    for x in data['list']:
+      if len(definition) < len(x['definition']):
+        definition = x['definition']
+  #Make sure the type of search term is either name or word; if not specified or if an invalid type is entered, the bot will not send anything
+  if term == 'name' or term == 'word':
+    await ctx.send(definition)
 
 #Bot will choose a random custom quote and its respective author from a list of custom quotes and their authors
 @client.command()
@@ -188,12 +265,12 @@ async def balance(ctx):
   await ctx.send(':yin_yang:')
   await ctx.send('https://tenor.com/view/zenyatta-robot-power-gif-7313314')
 
-async def join(ctx):
-  vc = ctx.author.voice.channel
-  print(vc)
-  voice = discord.utils.get(client.voice_clients, guild = ctx.guild)
-  if(voice == None):
-    await vc.connect()
+#async def join(ctx):
+  #vc = ctx.author.voice.channel
+  #print(vc)
+  #voice = discord.utils.get(client.voice_clients, guild = ctx.guild)
+  #if(voice == None):
+    #await vc.connect()
 
 #Voice command. It has the Zenyatta saying 'Experience tranquility'
 @client.command()
@@ -269,23 +346,15 @@ async def on_message(message):
   #Bot will tell the user to not be mad if the author says "im mad"
   elif content.lower() == 'im mad':
     await message.channel.send('Stop being mad, or you are going to hurt someone.')
-  elif content.lower() == 'grinch':
-    await message.channel.send('Be more loveable and caring')
   #Bot will respond to bad words by telling users to be careful what they say
   if any(word in content.lower() for word in badWords):
     msg = language()
     if('ass' in content.lower()):
       if not('mass' in content.lower() or 'bass' in content.lower()):
-        #Unicode for the emojis that spell out the word "bruh." Last emoji is the unicode of a person facepalming.
-        bruh = ['\U0001F1E7', '\U0001F1F7', '\U0001F1FA', '\U0001F1ED', '\U0001F926']
-        for x in bruh:
-          await message.add_reaction(x)
         await message.channel.send(msg)
     else:
-      bruh = ['\U0001F1E7', '\U0001F1F7', '\U0001F1FA', '\U0001F1ED', '\U0001F926']
-      for x in bruh:
-        await message.add_reaction(x)
       await message.channel.send(msg)
+  #Bot will respond to commands with +firstName lastName by providing descriptions of them if they exist in an array of people. This feature is hidden and currently contains my friends
   if 'manish and rohan' in content.lower() or 'rohan and manish' in content.lower():
     await message.channel.send('The real dynamic duo, not Rohit and Avirat')
   if 'sus' == content.lower() or content.lower().startswith('sus ') or ' sus ' in content.lower() or content.lower().endswith(' sus'):
