@@ -5,7 +5,6 @@ import os
 import requests
 import json
 from discord.ext import commands
-import nacl
 import re
 import nltk
 from nltk.corpus import stopwords
@@ -118,6 +117,7 @@ def getQuotes(message):
   return quote
 
 #This method will use sentiment analysis to analyze a description and calculate its score
+#Got help from rishixyz9
 def vader_uncleaned_score(msg):
   sentiment_score = 0
   count = 0
