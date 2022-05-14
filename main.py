@@ -117,7 +117,6 @@ def getQuotes(message):
   return quote
 
 #This method will use sentiment analysis to analyze a description and calculate its score
-#Got help from rishixyz9
 def vader_uncleaned_score(msg):
   sentiment_score = 0
   count = 0
