@@ -29,6 +29,7 @@ commandsList = [
 '-balance: Bot will describe about good and evil in people and show Zenyatta holding light and dark orbs.\n', '-urban \"type\" \"term\": The types are either \"name\" or \"word\". If the word you will provide is a name type, the bot will try to give the best possible description of that person using sentiment analysis. If the word given is an actual word, then the bot will try to find the most specific definition of that word.'
 ]
 
+#Voice commands
 vCommands = [ 
 '-zenyatta: You will hear Zenyatta\'s voice.\n', 
 '-courage: Gives you courage to do it.\n', 
@@ -39,6 +40,7 @@ vCommands = [
 #Responses to messages containing bad words
 languages = ['Mind your language', 'LANGUAGE!!!', 'Take a chill pill', 'Oh someone is having a \"good\" day', 'Take some deep breaths before saying anything more', 'https://tenor.com/view/chill-out-kevin-hart-jumanji-jumanji-movie-gif-11210111']
 
+#Descriptions of me and my friends in my discord server
 descriptions = {
   #My friends
   'people': ['-manish mallik', '-sandeep mishra', '-rohan springer', '-reshvar kuppurangi', '-rohit parkar', '-priyansh mewada', '-hrishi rout', '-krishna rout'],
