@@ -26,23 +26,19 @@ commandsList = [
 '-aq: Adds a custom quote and the author\n', 
 '-ping: Bot will say \"Pong!\"\n', 
 '-hello: Bot will say \"Hello!\"\n', '-bye: Bot will say \"Goodbye!\"\n', 
-'-balance: Bot will describe about good and evil in people and show Zenyatta holding light and dark orbs.\n',
-'-urban \"type\" \"term\": The types are either \"name\" or \"word\". If the word you will provide is a name type, the bot will try to give the best possible description of that person using sentiment analysis. If the word given is an actual word, then the bot will try to find the most specific definition of that word.'
+'-balance: Bot will describe about good and evil in people and show Zenyatta holding light and dark orbs.\n', '-urban \"type\" \"term\": The types are either \"name\" or \"word\". If the word you will provide is a name type, the bot will try to give the best possible description of that person using sentiment analysis. If the word given is an actual word, then the bot will try to find the most specific definition of that word.'
 ]
 
 vCommands = [ 
 '-zenyatta: You will hear Zenyatta\'s voice.\n', 
-'-courage: Gives you courage to do it.', 
-'-zuko: Hear Zuko\'s best moment', 
+'-courage: Gives you courage to do it.\n', 
+'-zuko: Hear Zuko\'s best moment.\n', 
 '-leave: Commands the bot to leave the voice channel.\n'
 ]
-#Bad words
-badWords = ['fuck', 'shit', 'penis', 'dick', 'pussy', 'bitch', 'ass', 'wanker', 'damn', 'piss', 'prick', 'cunt']
 
 #Responses to messages containing bad words
 languages = ['Mind your language', 'LANGUAGE!!!', 'Take a chill pill', 'Oh someone is having a \"good\" day', 'Take some deep breaths before saying anything more', 'https://tenor.com/view/chill-out-kevin-hart-jumanji-jumanji-movie-gif-11210111']
 
-#Dictionary of descriptions
 descriptions = {
   #My friends
   'people': ['-manish mallik', '-sandeep mishra', '-rohan springer', '-reshvar kuppurangi', '-rohit parkar', '-priyansh mewada', '-hrishi rout', '-krishna rout'],
@@ -116,7 +112,7 @@ def getQuotes(message):
   quote = data[0]['q'] + '\n-' + data[0]['a']
   return quote
 
-#This method will use sentiment analysis to analyze a description and calculate its score
+#Sentiment Analysis Code
 def vader_uncleaned_score(msg):
   sentiment_score = 0
   count = 0
@@ -126,6 +122,29 @@ def vader_uncleaned_score(msg):
     sentiment_score += analyzer.polarity_scores(i)['compound']
     count+=1
   return(sentiment_score/count)
+
+#Detect if there is any profanity in Discord messages
+def profanity(msg):
+  url = "https://api.apilayer.com/bad_words?censor_character={censor_character}"
+
+  payload = msg.content.encode("utf-8")
+  headers= {
+  "apikey": "My Profanity API Key"
+  }
+
+  response = requests.request("POST", url,
+  headers=headers, data = payload)
+
+  status_code = response.status_code
+  #print(response.text)
+  result = json.loads(response.text)
+  badWordTotal = result["bad_words_total"]
+  badWords = result["bad_words_list"]
+  response_message = msg.content
+  if(badWordTotal == 0):
+    return False
+  else:
+    return True
 
 #Bot will send a list of the commands and their descriptions when someone asks for the commands
 @client.command()
@@ -165,44 +184,33 @@ async def hello(ctx):
 async def bye(ctx):
   await ctx.send('Goodbye!')
 
-#Bot will use the Urban Dictionary API to pull a list of all the possible definitions/descriptions for a word
+myKey = os.environ['My Urban Key']
+
+#Pull definitions/descriptions of terms and people
 @client.command()
 async def urban(ctx, term, msg):
-  #Setup to request for a list of descriptions
   url = "https://mashape-community-urban-dictionary.p.rapidapi.com/define"
   querystring = {"term":msg}
-  myKey = os.environ['My Urban Key']
   headers = {
     'x-rapidapi-host': "mashape-community-urban-dictionary.p.rapidapi.com",
-    'x-rapidapi-key': myKey
+    'x-rapidapi-key': "My Urban Key"
   }
-  
-  #Get the list of definitions for the word being searched for
   response = requests.request("GET", url, headers=headers, params=querystring)
+  #print(response.text)
+  #link = 'https://www.urbandictionary.com/define.php?term=' + msg
   data = json.loads(response.text)
-  #1st definition of the word in that list
   definition = data['list'][0]['definition']
-  
-  #Two types of words: a regular word, or a name
-  #The type of the word/term being searched for in the urban dictionary must be specified
-  #If the word is supposed to be a name, then get the best urban dictionary description possible for the name
   if term == 'name':
-    #Initial score for the 1st definition
     highestScore = vader_uncleaned_score(definition)
     for x in data['list']:
-      #Get the sentiment analysis score of the next definition in the list
       newScore = vader_uncleaned_score(x['definition'])
-      #If newScore is greater than the highest sentiment analysis score seen so far, replace the chosen definition with the new one before going to the next definition
-      #Make newScore the new highestScore
       if highestScore < newScore:
         definition = x['definition']
         highestScore = newScore
-  #The word type should just be a regular word if not a name. Get the longest definition possible
   elif term == 'word':
     for x in data['list']:
       if len(definition) < len(x['definition']):
         definition = x['definition']
-  #Make sure the type of search term is either name or word; if not specified or if an invalid type is entered, the bot will not send anything
   if term == 'name' or term == 'word':
     await ctx.send(definition)
 
@@ -285,16 +293,17 @@ async def zenyatta(ctx):
   audio_source = discord.FFmpegPCMAudio('experienceTranquility.mp3')
   #if not voice_client.is_playing():
    # voice_client.play(audio_source, after = None)
-  print('Time to play')
+  #print('Time to play')
   await voice_client.play(audio_source).start()
-  print('Time to leave')
-  await ctx.voice_client.disconnect(force = True)
-  print('Time to left')
+  #print('Time to leave')
+  #await ctx.voice_client.disconnect(force = True)
+  #print('Time to left')
   #player.start()
   #while not player.is_done():
    # await asyncio.sleep(1)
   #player.stop()
 
+#Voice command. It says 'DO IT! Just Do it!'
 @client.command()
 async def courage(ctx):
   vc = ctx.author.voice.channel
@@ -309,6 +318,7 @@ async def courage(ctx):
    # voice_client.play(audio_source, after = None)
   voice_client.play(audio_source, after = None).start()
 
+#Voice command. It has Zuko's voice
 @client.command()
 async def zuko(ctx):
   vc = ctx.author.voice.channel
@@ -345,14 +355,12 @@ async def on_message(message):
   #Bot will tell the user to not be mad if the author says "im mad"
   elif content.lower() == 'im mad':
     await message.channel.send('Stop being mad, or you are going to hurt someone.')
+  elif content.lower() == 'grinch':
+    await message.channel.send('Be more loveable and caring')
   #Bot will respond to bad words by telling users to be careful what they say
-  if any(word in content.lower() for word in badWords):
+  if profanity(message):
     msg = language()
-    if('ass' in content.lower()):
-      if not('mass' in content.lower() or 'bass' in content.lower()):
-        await message.channel.send(msg)
-    else:
-      await message.channel.send(msg)
+    await message.channel.send(msg)
   #Bot will respond to commands with +firstName lastName by providing descriptions of them if they exist in an array of people. This feature is hidden and currently contains my friends
   if 'manish and rohan' in content.lower() or 'rohan and manish' in content.lower():
     await message.channel.send('The real dynamic duo, not Rohit and Avirat')
